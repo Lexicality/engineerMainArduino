@@ -1,6 +1,7 @@
 #include <FastLED.h>
 #include <ClickEncoder.h>
 #include <TimerOne.h>
+#include "leds.h"
 
 
 
@@ -14,13 +15,6 @@
 // led stuff  ------------------
 // led clock on 13
 // led data on 11
-
-#define NUM_PANEL_LEDS  5
-#define PIXELS_PER_RING 12
-#define NUM_RINGS       4
-#define NUMPIXELS       NUM_PANEL_LEDS + PIXELS_PER_RING * NUM_RINGS + 1
-
-
 
 
 // encoder stuff
@@ -69,12 +63,6 @@ byte warmupOrder[5];      // order of switches for warmup (orange) phase
 byte powerOnOrder[5];     // order of switches for powerup (green) phse
 byte currentSwitch = 0;   // switch id we are waiting for correct value for
 
-// blinking stuff
-int lastBlinkTime = 0;
-int nextBlinkTime = 100;
-boolean blinker = false;
-int counter = 0;
-
 // analog bits
 int lastA = -1;
 int lastB = -1;
@@ -88,32 +76,6 @@ boolean lockSent = false;
 byte powerLevels[4] = {
   6, 6, 6, 6
 };
-boolean ringLightState = false;
-
-// led states
-CRGB leds[NUMPIXELS];
-CRGB *ledsPanel = &leds[0],
-     *ledRings[NUM_RINGS] = {
-       &leds[NUM_PANEL_LEDS],
-       &leds[NUM_PANEL_LEDS + PIXELS_PER_RING * 1],
-       &leds[NUM_PANEL_LEDS + PIXELS_PER_RING * 2],
-       &leds[NUM_PANEL_LEDS + PIXELS_PER_RING * 3]
-     },
-     *ledReactor = &leds[NUM_PANEL_LEDS + PIXELS_PER_RING * NUM_RINGS];
-
-// LED Colours
-CRGB BrightRed = 0xFF0000;
-CRGB BrightGreen = 0x00FF00;
-
-// Ideally convert these to HSV
-CRGB PanelYellow = CRGB(255, 92, 15); // ?64 h, ~239.955 s, 100 v
-CRGB PanelGreen = 0x00C800; // ~96 h, 255 s, ~199.92 v
-
-// These could do with being HSV too
-CRGB RingRed = 0x220000;
-CRGB RingYellow = 0x222200;
-CRGB RingGreen = 0x002200;
-
 
 // serial handling
 char buffer[10]; // serial buffer
@@ -122,7 +84,7 @@ byte bufPtr = 0;
 int damageTimer = 0;
 
 void setup() {
-  FastLED.addLeds<NEOPIXEL, 13>(leds, NUMPIXELS);
+  setupLEDs();
 
   // power man buttons
   pinMode(5, INPUT);
@@ -142,9 +104,6 @@ void setup() {
   pinMode(PIN_DATA, INPUT);
 
   digitalWrite(PIN_CLOCK, LOW);
-
-  // I'm pretty sure you shouldn't do this.
-  memset(leds, 0, NUMPIXELS * 3);
 
   // serial shit
   Serial.begin(9600);
@@ -176,9 +135,7 @@ void timerIsr() {
 }
 
 void reset() {
-  for (int i = 0; i < NUM_PANEL_LEDS; i++) {
-    ledsPanel[i] = CRGB::Black;
-  }
+  resetLEDs();
 
   warmupOrder[0] = 0;
   warmupOrder[1] = 2;
@@ -214,8 +171,6 @@ void reset() {
 
   gameState = STATE_OFF;
   currentSwitch = 0;
-  nextBlinkTime = 100;
-
   Serial.print("S0,");
 }
 
@@ -345,34 +300,6 @@ void readAnalog() {
 }
 
 /*do the ring leds*/
-void updatePowerRings() {
-  int i, j;
-  // Reset all LEDs to black
-  // TODO: Potential subtle bug: Previous iteration of this also set reactor led to 0.
-  for (i = 0; i < NUM_RINGS; i++) {
-    for (j = 0; j < PIXELS_PER_RING; j++) {
-      ledRings[i][j] = CRGB::Black;
-    }
-  }
-
-  if (!ringLightState)
-    return;
-
-  int ledId;
-  for (i = 0; i < NUM_RINGS; i++) {
-    for (ledId = 0; ledId < powerLevels[i]; ledId++) {
-      if (ledId < 4) {
-        ledRings[i][ledId] = RingRed;
-      }
-      else if (ledId < 8) {
-        ledRings[i][ledId] = RingYellow;
-      }
-      else {
-        ledRings[i][ledId] = RingGreen;
-      }
-    }
-  }
-}
 
 void processBuffer() {
   char c = buffer[0];
@@ -443,13 +370,7 @@ void loop() {
 
   }
 
-  // thingy counter
-  counter ++;
-  // blinker
-  if (lastBlinkTime + nextBlinkTime < counter) {
-    lastBlinkTime = counter;
-    blinker = !blinker;
-  }
+  LEDBlinkThink();
 
   if (gameState == STATE_DEAD) {
     stateDead();
@@ -480,5 +401,5 @@ void loop() {
   }
 
   // leds
-  FastSPI_LED.show();
+  showLEDs();
 }
