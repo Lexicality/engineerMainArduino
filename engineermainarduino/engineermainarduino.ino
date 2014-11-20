@@ -4,32 +4,10 @@
 
 #include "leds.h"
 #include "encoders.h"
+#include "switches.h"
 
 
 #define PIN_AIRLOCK 16
-
-#define PIN_DATA  12
-#define PIN_CLOCK 3
-#define PIN_LOAD  2
-
-// main pane switches
-byte switches[6];
-byte lastSwitches[6];
-boolean switchesChanged = false;
-
-
-// map bits to switch num and pos
-// {bit, switch pos }
-byte switchMap[] = {
-  3, 2,
-  1, 0,
-  7, 6,
-  5, 4,
-  12, 13
-};
-
-long switchPos = 0;
-int lastChangedSwitch = 0;
 
 // --------------- game logic bits ----------
 #define STATE_DEAD -1
@@ -41,10 +19,6 @@ int lastChangedSwitch = 0;
 
 // reactor puzzle game state
 int gameState = STATE_OFF;
-
-byte warmupOrder[5];      // order of switches for warmup (orange) phase
-byte powerOnOrder[5];     // order of switches for powerup (green) phse
-byte currentSwitch = 0;   // switch id we are waiting for correct value for
 
 // analog bits
 int lastA = -1;
@@ -77,11 +51,7 @@ void setup() {
   pinMode(PIN_AIRLOCK, INPUT);
   digitalWrite(PIN_AIRLOCK, HIGH);
 
-  pinMode(PIN_CLOCK, OUTPUT);
-  pinMode(PIN_LOAD, OUTPUT);
-  pinMode(PIN_DATA, INPUT);
-
-  digitalWrite(PIN_CLOCK, LOW);
+  setupSwitches();
 
   // serial shit
   Serial.begin(9600);
@@ -93,73 +63,13 @@ void setup() {
 void reset() {
   resetLEDs();
 
-  warmupOrder[0] = 0;
-  warmupOrder[1] = 2;
-  warmupOrder[2] = 4;
-  warmupOrder[3] = 1;
-  warmupOrder[4] = 3;
-
-  powerOnOrder[0] = 1;
-  powerOnOrder[1] = 4;
-  powerOnOrder[2] = 2;
-  powerOnOrder[3] = 0;
-  powerOnOrder[4] = 3;
-
-  for (int i = 4; i > 0; i--) {
-    int rand = random(i + 1);
-    if (rand != i) {
-      int t = warmupOrder[i];
-      warmupOrder[i] = warmupOrder[rand];
-      warmupOrder[rand] = t;
-    }
-  }
-
-  for (int i = 4; i > 0; i--) {
-    int rand = random(i + 1);
-    if (rand != i) {
-      int t = powerOnOrder[i];
-      powerOnOrder[i] = powerOnOrder[rand];
-      powerOnOrder[rand] = t;
-    }
-  }
+  randomiseSwitchOrder();
 
   *ledReactor = BrightRed;
 
   gameState = STATE_OFF;
   currentSwitch = 0;
   Serial.print("S0,");
-}
-
-void readSwitches() {
-  switchPos = 0;
-  switchesChanged = false;
-  digitalWrite(PIN_LOAD, LOW);
-  digitalWrite(PIN_LOAD, HIGH);
-
-  delay(5);
-
-  for (int i = 0 ; i < 16; i++) {
-    digitalWrite(PIN_CLOCK, LOW);
-    byte a = digitalRead(PIN_DATA);
-    switchPos |= ( (long)a << i);
-    digitalWrite(PIN_CLOCK, HIGH);
-  }
-
-  for (int i = 0; i < 5; i++) {
-    byte p = (switchPos & 1l << switchMap[i * 2] ) == 0 ? 0 : 1;
-    byte p2 = (switchPos & 1l << switchMap[i * 2 + 1] ) == 0 ? 0 : 1;
-    p2 <<= 1;
-    p = p2 | p ;
-
-    switches[i] = p;
-    if (lastSwitches[i] != switches[i]) {
-      lastSwitches[i] = p;
-      lastChangedSwitch = i;
-      //      Serial.(lastChangedSwitch);
-      switchesChanged = true;
-    }
-  }
-  switches[5] = (switchPos & 1l << 15) == 0 ? 1 : 0; // inverted for the power switch
 }
 
 void readAnalog() {
@@ -180,8 +90,6 @@ void readAnalog() {
     Serial.print(",");
   }
 }
-
-/*do the ring leds*/
 
 void processBuffer() {
   char c = buffer[0];
