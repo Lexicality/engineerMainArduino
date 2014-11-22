@@ -28,12 +28,11 @@ void setup() {
   setupLEDs();
   setupAirlock();
   setupSwitches();
+  setupEncoders();
 
   // serial shit
   Serial.begin(9600);
   reset();
-
-  setupEncoders();
 }
 
 void reset() {
