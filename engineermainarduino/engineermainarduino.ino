@@ -7,8 +7,6 @@
 #include "switches.h"
 
 
-#define PIN_AIRLOCK 16
-
 // --------------- game logic bits ----------
 #define STATE_DEAD -1
 #define STATE_OFF 0
@@ -20,15 +18,6 @@
 // reactor puzzle game state
 int gameState = STATE_OFF;
 
-// analog bits
-int lastA = -1;
-int lastB = -1;
-
-// airlock switch state
-byte lastAirlock = 0;
-long lastAirlockRead = 0;
-boolean lockSent = false;
-
 // serial handling
 char buffer[10]; // serial buffer
 byte bufPtr = 0;
@@ -37,10 +26,7 @@ int damageTimer = 0;
 
 void setup() {
   setupLEDs();
-
-  pinMode(PIN_AIRLOCK, INPUT);
-  digitalWrite(PIN_AIRLOCK, HIGH);
-
+  setupAirlock();
   setupSwitches();
 
   // serial shit
@@ -57,25 +43,6 @@ void reset() {
   *ledReactor = BrightRed;
 
   gameState = STATE_OFF;
-}
-
-void readAnalog() {
-  // do analog
-  int valA = 11 - map(analogRead(4), 0, 1024, 10, 0);
-  int valB = 11 - map(analogRead(5), 0, 1024, 10, 0);
-
-  if (valA != lastA) {
-    lastA = valA;
-    Serial.print("B");
-    Serial.print(valA);
-    Serial.print(",");
-  }
-  if (valB != lastB) {
-    lastB = valB;
-    Serial.print("A");
-    Serial.print(valB);
-    Serial.print(",");
-  }
 }
 
 void processBuffer() {
@@ -123,23 +90,7 @@ void loop() {
   if (gameState != STATE_DEAD) {
     readSwitches();
     readAnalog();
-
-    if (lastAirlockRead + 10 < millis()) {
-      lastAirlockRead = millis();
-      byte b = digitalRead(PIN_AIRLOCK);
-      if ((b == lastAirlock)) {
-        if (b == 0) {
-          if (!lockSent) {
-            Serial.print("L,");
-            lockSent = true;
-          }
-        }
-        else {
-          lockSent = false;
-        }
-      }
-      lastAirlock = b;
-    }
+    readAirlock();
 
     if (damageTimer > 0) {
       damageTimer --;
