@@ -38,16 +38,6 @@ int damageTimer = 0;
 void setup() {
   setupLEDs();
 
-  // power man buttons
-  pinMode(5, INPUT);
-  digitalWrite(5, HIGH);
-  pinMode(6, INPUT);
-  digitalWrite(6, HIGH);
-  pinMode(7, INPUT);
-  digitalWrite(7, HIGH);
-  pinMode(8, INPUT);
-  digitalWrite(8, HIGH);
-
   pinMode(PIN_AIRLOCK, INPUT);
   digitalWrite(PIN_AIRLOCK, HIGH);
 
