@@ -52,14 +52,11 @@ void setup() {
 
 void reset() {
   resetLEDs();
-
-  randomiseSwitchOrder();
+  resetSwitches();
 
   *ledReactor = BrightRed;
 
   gameState = STATE_OFF;
-  currentSwitch = 0;
-  Serial.print("S0,");
 }
 
 void readAnalog() {
