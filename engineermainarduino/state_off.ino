@@ -1,6 +1,8 @@
 // OFF
 
-void setStateOff() {}
+void setStateOff() {
+  setBlinkSpeed(100);
+}
 
 void stateOff() {
   clearLEDs();
@@ -19,14 +21,14 @@ void stateOff() {
   // Top switches
   for (int i = 0; i < 5; i++) {
     if (switches[i] != SWITCH_POS_DOWN) {
-      states = false;
+      return;
     }
   }
   // Reactor switch
-    states = false;
-  }
-  if (states) {
-    setState(STATE_WARMUP);
   if (switches[REACTOR_SWITCH] != REACTOR_SWITCH_OFF) {
+    return;
   }
+
+  // All tests passed, let's start the reactor
+  setState(STATE_WARMUP);
 }
