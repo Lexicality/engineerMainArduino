@@ -1,5 +1,6 @@
 // OFF
 
+void setStateOff() {}
 
 void stateOff() {
   clearLEDs();
@@ -26,7 +27,6 @@ void stateOff() {
     states = false;
   }
   if (states) {
-    gameState = STATE_WARMUP;
-    lastChangedSwitch = -1;
+    setState(STATE_WARMUP);
   }
 }
